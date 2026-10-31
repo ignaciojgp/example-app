@@ -1,0 +1,36 @@
+# Configuración de la Software Factory
+# Precedencia: argumento --approval=<preset> en /feature  >  gates (abajo)  >  preset
+
+approval:
+  # Presets:
+  #   strict → todos los gates son manuales
+  #   audit  → manual en spec y plan; el resto automático
+  #   auto   → todo automático (solo se detiene en las paradas de seguridad)
+  preset: strict
+
+  # Sobrescrituras por gate (manual | auto). Descomenta para ajustar fino.
+  gates:
+    # spec: manual            # tras el Product Agent: historia + criterios de aceptación
+    # plan: manual            # tras el Architect Agent: plan técnico
+    # implementation: auto    # tras Dev + QA con el gate en verde, antes de la revisión
+    # review: auto            # tras el Review Agent, antes de abrir el PR
+    # pr: auto                # push de la rama + creación del PR
+
+  # En cada gate manual se ofrece "Aprobar y continuar en automático",
+  # que pone en auto el resto de gates de esa corrida.
+  allow_switch_to_auto: true
+
+# Paradas de seguridad: se respetan SIEMPRE, incluso en modo auto.
+limits:
+  max_fix_iterations: 3        # ciclos dev→gate/review antes de detenerse y preguntar
+  stop_on_unresolved_blockers: true
+  max_files_changed: 25        # si el diff es mayor, preguntar antes de seguir
+
+git:
+  base_branch: main
+  branch_prefix: feature/
+  remote: origin
+  draft_pr: true               # el PR se abre como draft; el merge siempre es humano
+
+quality:
+  run_ui_tests: false          # true → el gate incluye los XCUITests (más lento)

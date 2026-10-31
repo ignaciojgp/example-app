@@ -1,0 +1,5 @@
+.venv/
+xcuserdata/
+.build/
+.factory/runs/
+.DS_Store

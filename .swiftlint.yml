@@ -1,0 +1,12 @@
+included:
+  - example-app
+  - example-appTests
+  - example-appUITests
+excluded:
+  - .build
+disabled_rules:
+  - trailing_whitespace
+  - type_name        # los targets de plantilla usan snake_case (example_appTests)
+line_length:
+  warning: 140
+  error: 200
