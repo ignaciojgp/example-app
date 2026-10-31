@@ -16,7 +16,7 @@ run_xcodebuild() {
   if xcodebuild -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" \
        -derivedDataPath "$DERIVED_DATA" "$@" >"$log" 2>&1; then
     echo "✅ $name OK (log: $log)"
-    n=$(grep -c "^Test case .* passed" "$log" || true); if [[ "$name" == test ]]; then echo "   $n tests pasaron"; fi
+    n=$(grep -cE "^(✔ Test .* passed|Test [Cc]ase .* passed)" "$log" || true); if [[ "$name" == test ]]; then echo "   $n tests pasaron"; fi
   else
     echo "❌ $name FALLÓ (log: $log)"
     grep -E "error:|✘|failed|Failing tests:|XCTAssert|Expectation failed|^Test case .* failed" "$log" | grep -v "^note:" | head -40
