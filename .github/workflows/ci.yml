@@ -1,0 +1,42 @@
+name: CI
+
+# 1. Triggers: Cuándo se ejecuta
+on:
+  pull_request: #cada PR
+  push:
+    branches: [main] #cada merge a main
+  workflow_dispatch:  # botón manual "Run Workflow" en la pestaña Actions
+
+# 2. Concurrencia: si haces push dos veces seguidas, cancela la corrida vieja (ahorra minutos)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: macos-26 # 3. Runner
+    timeout-minutes: 30 # protección para que no se cuelgue
+
+    steps:
+      # 4 trae el el código: el runner arranca vacío
+      - uses: actions/checkout@v4
+
+      # 5 Elegir xcode: el proyecto pide iOS 26.5 asì que necesitamos >= 26.5
+      - name: Seleccionar Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      # 6. Diagnóstico: qué simuladores tiene esta máquina
+      - name: Simuladores disponibles
+        run: xcrun simctl list devices available | grep -i iphone
+      
+      - name: Instalar SwiftLint
+        run: brew install swiftlint
+        
+      # 7. El mismo comando que corres en local
+      - name: Gate
+        run: scripts/factory/gate.sh
+
