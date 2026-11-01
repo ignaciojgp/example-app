@@ -16,10 +16,24 @@ run_xcodebuild() {
   if xcodebuild -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" \
        -derivedDataPath "$DERIVED_DATA" "$@" >"$log" 2>&1; then
     echo "✅ $name OK (log: $log)"
-    n=$(grep -cE "^(✔ Test .* passed|Test [Cc]ase .* passed)" "$log" || true); if [[ "$name" == test ]]; then echo "   $n tests pasaron"; fi
   else
     echo "❌ $name FALLÓ (log: $log)"
     grep -E "error:|✘|failed|Failing tests:|XCTAssert|Expectation failed|^Test case .* failed" "$log" | grep -v "^note:" | head -40
     exit 1
   fi
+}
+
+# Número de tests que pasaron. Prefiere el .xcresult (fuente de verdad) y si no, cuenta en el log.
+# El log mezcla dos formatos: Swift Testing ("✔ Test x() passed"; los parametrizados empiezan con U+200B,
+# por eso el prefijo [^A-Za-z]*, y se excluye el resumen "Test run with N tests") y XCTest ("Test Case '...' passed").
+count_passed_tests() {
+  local result="$1" log="$2" n=""
+  if [[ -d "$result" ]]; then
+    n=$(xcrun xcresulttool get test-results summary --path "$result" 2>/dev/null \
+          | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["passedTests"])' 2>/dev/null || true)
+  fi
+  if [[ -z "$n" ]]; then
+    n=$(grep -E '^[^A-Za-z]*✔ Test .* passed|^Test [Cc]ase .* passed' "$log" | grep -vc 'Test run with' || true)
+  fi
+  echo "$n"
 }

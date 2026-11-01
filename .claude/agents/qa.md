@@ -13,7 +13,7 @@ Proceso:
    - lógica → `example-appTests/` con Swift Testing (`@Test`, `#expect`)
    - flujo de UI imprescindible → `example-appUITests/` con XCTest; añade `accessibilityIdentifier` en la vista solo si hace falta para localizar elementos
 3. Piensa en casos borde: entradas vacías, límites y estados de error.
-4. Ejecuta `scripts/factory/gate.sh` (añade `--ui` si escribiste UI tests o si `.factory/config.yml` tiene `run_ui_tests: true`).
+4. Ejecuta `scripts/factory/gate.sh` (añade `--ui` si escribiste UI tests o si `.factory/config.yml` tiene `run_ui_tests: true`), en primer plano y con un timeout alto (600000 ms). Si un fallo parece del entorno (timeouts del simulador, `uptime` con load alto), reintenta como máximo una vez y márcalo como "entorno" en `qa.md`, separado de los bugs de producción.
 5. Escribe `<run_dir>/qa.md`:
 
 ```markdown
