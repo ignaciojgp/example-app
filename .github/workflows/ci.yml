@@ -37,6 +37,10 @@ jobs:
       # objetos de una corrida anterior. Key única por run (siempre "falla" el match
       # exacto) + restore-keys con el mismo prefijo => siempre restaura el cache más
       # reciente de la rama, y siempre guarda uno nuevo al final.
+      # Ojo: el scope del cache depende de la ref que disparó la corrida, no solo del
+      # nombre de rama. Un run de "pull_request" guarda bajo refs/pull/<n>/merge; uno
+      # de "push"/"workflow_dispatch" guarda bajo refs/heads/<rama>. Son scopes
+      # distintos aunque sea "la misma rama", así que no comparten cache entre sí.
       - name: Cache DerivedData
         uses: actions/cache@v4
         with:
@@ -59,4 +63,25 @@ jobs:
       # 7. El mismo comando que corres en local
       - name: Gate
         run: scripts/factory/gate.sh
+
+      # 8. Reporting: test.sh ya genera un .xcresult (ver -resultBundlePath en
+      # scripts/factory/test.sh). "if: always()" es clave: sin eso, este step no
+      # correría cuando el Gate falla, que es justo cuando más quieres ver qué test
+      # rompió. xcresulttool y jq ya vienen instalados en el runner.
+      - name: Resumen de tests
+        if: always()
+        run: |
+          RESULT=".build/TestResults.xcresult"
+          if [[ ! -d "$RESULT" ]]; then
+            echo "⚠️ No se generó xcresult (el build probablemente falló antes de llegar a tests)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          xcrun xcresulttool get test-results summary --path "$RESULT" --format json --compact > summary.json
+          PASSED=$(jq -r .passedTests summary.json)
+          FAILED=$(jq -r .failedTests summary.json)
+          TOTAL=$(jq -r .totalTestCount summary.json)
+          {
+            echo "### 🧪 Tests: $PASSED/$TOTAL pasaron ($FAILED fallaron)"
+            jq -r '.testFailures[] | "- **\(.testName)** (\(.targetName)): \(.failureText)"' summary.json
+          } >> "$GITHUB_STEP_SUMMARY"
 
