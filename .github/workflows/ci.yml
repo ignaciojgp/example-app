@@ -32,7 +32,27 @@ jobs:
       # 6. Diagnóstico: qué simuladores tiene esta máquina
       - name: Simuladores disponibles
         run: xcrun simctl list devices available | grep -i iphone
-      
+
+      # 6.5 Cache de DerivedData: xcodebuild compila incrementalmente si encuentra
+      # objetos de una corrida anterior. Key única por run (siempre "falla" el match
+      # exacto) + restore-keys con el mismo prefijo => siempre restaura el cache más
+      # reciente de la rama, y siempre guarda uno nuevo al final.
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: .build/DerivedData
+          key: deriveddata-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            deriveddata-${{ runner.os }}-
+
+      # 6.6 Cache de descargas de Homebrew: no evita el "brew install" en sí,
+      # pero evita re-descargar el bottle de swiftlint si no cambió de versión.
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-swiftlint-${{ runner.os }}
+
       - name: Instalar SwiftLint
         run: brew install swiftlint
         
