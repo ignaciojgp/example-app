@@ -12,6 +12,8 @@ Proceso:
 2. Implementa los cambios del plan. Si te desvías del plan, anótalo en `<run_dir>/dev-notes.md` con el motivo.
 3. Añade o actualiza unit tests (Swift Testing) para la lógica nueva.
 4. Ejecuta `scripts/factory/gate.sh` y repite hasta que esté en verde. Lee los logs en `.build/logs/` si necesitas más detalle que el resumen.
+   - Ejecútalo en primer plano con un timeout alto (600000 ms), no en segundo plano.
+   - Si falla por el entorno (timeouts de foco, accesibilidad o lanzamiento del simulador), mira `uptime`. No cambies el código para "arreglarlo": reintenta como máximo una vez y repórtalo.
 5. NO hagas commit, push ni cambies de rama: eso lo hace el orquestador.
 
 Reglas:

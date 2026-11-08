@@ -40,6 +40,11 @@ Al terminar una etapa con gate `<g>`:
   - **Abortar** → registra, deja la rama tal cual y termina con instrucciones de `--resume`
   Registra la decisión y el texto del usuario en `log.md`.
 
+Reglas de los gates:
+- **Cada gate se aprueba por separado.** Una respuesta nunca aprueba el gate siguiente. No inventes opciones combinadas (como "Aprobar y abrir PR"): usa solo las de arriba, más las extra que se definen en cada etapa. La única forma de saltar gates es "Aprobar y continuar en automático", que queda registrada.
+- El gate `pr` siempre se pregunta por separado mientras esté en `manual`, porque publica fuera de la máquina.
+- Las paradas de seguridad se registran en `log.md` con modo `parada de seguridad`.
+
 ## Paradas de seguridad (siempre manuales, incluso en auto)
 
 Detente y pregunta si:
@@ -49,6 +54,10 @@ Detente y pregunta si:
 - un subagente cambió `project.pbxproj`, añadió dependencias, desactivó tests o tocó archivos fuera del alcance del plan;
 - algún paso necesita una acción destructiva (force-push, borrar ramas, reset).
 
+## Delegación a subagentes
+
+En cada prompt a un subagente incluye `RUN_DIR`, la rama, la rama base y **las decisiones que el usuario ya tomó en esta corrida** (por ejemplo, archivos borrados a propósito o cambios fuera del plan ya aprobados), para que no los reviertan ni los reporten como fallos.
+
 ## Etapas
 
 1. **spec** → subagente `product` con la entrada y `RUN_DIR`. Gate `spec`.
@@ -57,15 +66,17 @@ Detente y pregunta si:
    a. Subagente `developer` con `RUN_DIR`.
    b. Subagente `qa` con `RUN_DIR`.
    c. Si `qa.md` dice FAIL → `iterations++` y vuelve a (a) pasando `qa.md` como informe de fallos.
-   d. **Verificación del orquestador**: ejecuta tú mismo `scripts/factory/gate.sh` (con `--ui` si aplica). No confíes solo en lo que reportan los subagentes. Si falla, vuelve a (a).
+   d. **Verificación del orquestador**: ejecuta tú mismo `scripts/factory/gate.sh` (con `--ui` si aplica). No confíes solo en lo que reportan los subagentes. Si falla por el código, vuelve a (a). Si falla por el entorno (timeouts de foco, accesibilidad o lanzamiento del simulador, load alto), no cuenta como iteración: revisa la carga (`uptime`), reintenta una vez y, si vuelve a fallar, es una parada de seguridad.
+      Si tu resultado difiere del de `qa.md` (por ejemplo, QA dio FAIL por el entorno y tu gate pasó), añade a `qa.md` un `## Addendum del orquestador` con el resultado final. El PR se arma a partir de ese archivo.
    e. Commit local: `git add -A && git commit -m "feat(<slug>): <título de la spec>"`. Gate `implementation` (resumen: archivos cambiados con `git diff --stat <base>...HEAD`, tabla de QA).
 4. **review** → subagente `reviewer` con `RUN_DIR` y la rama base.
    - `CHANGES_REQUESTED` → `iterations++`, `developer` con `review.md`, luego `qa` y `gate.sh`, commit `fix(<slug>): resolver review`, y de nuevo `reviewer`.
-   - `APPROVE` → gate `review` (resumen: veredicto y no bloqueantes).
+   - `APPROVE` → gate `review` (resumen: veredicto y no bloqueantes). En modo manual, añade la opción extra **"Corregir no bloqueantes"**: el usuario indica cuáles (o todos), se hace un ciclo `developer` → `qa` → `gate.sh` → `reviewer`, y cuenta como iteración.
+   - El gate `review` aprueba solo la revisión. Después se pasa al gate `pr`.
 5. **pr**
    - Gate `pr` antes de publicar: es una acción externa.
    - `git push -u <remote> <branch>`.
-   - `gh pr create --base <base_branch> [--draft] --title "<título>" --body-file $RUN_DIR/pr.md`, donde `pr.md` contiene:
+   - `gh pr create --base <base_branch> [--draft] --title "<título>" --body-file $RUN_DIR/pr.md`. Escribe `pr.md` tú mismo (con Write), no lo armes con `sed` o `grep` sobre los artefactos, porque se corta el texto que contiene código. Debe incluir:
      - el **Resumen** (de `review.md`);
      - la **Historia y criterios** (de `spec.md`, con los checkboxes marcados según QA);
      - la tabla de **Tests** (de `qa.md`);
